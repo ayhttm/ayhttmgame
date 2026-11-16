@@ -355,6 +355,7 @@ export class PeerRoomHost {
     return {
       roomCode: this.roomCode,
       phase: this.phase,
+      quizId: this.quiz.id,
       quizTitle: this.quiz.title,
       quizCategory: this.quiz.category,
       totalQuestions: this.quiz.questions.length,
@@ -572,6 +573,9 @@ export class PeerRoomHost {
 
     if (msg.type === 'host:restart_game') {
       this.clearTimer();
+      if (msg.quiz) {
+        this.quiz = msg.quiz;
+      }
       this.phase = 'LOBBY';
       this.currentQuestionIndex = 0;
       this.phaseStartedAt = Date.now();

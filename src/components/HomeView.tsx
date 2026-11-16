@@ -9,6 +9,7 @@ import {
   Plus,
   Rocket,
   Shield,
+  Shuffle,
   Star,
   Timer,
   Users,
@@ -49,6 +50,8 @@ interface HomeViewProps {
   onClearError: () => void;
   onRetryConnection: () => void;
   onUpdateProfile: (name: string, color: AvatarColor) => void;
+  onRollDeck: (deckId: string) => QuizDeck | null;
+  onRollAllDecks: () => void;
   onJoinRoom: (roomCode: string, playerName: string, color: AvatarColor) => void;
   onCreateRoom: (
     playerName: string,
@@ -73,6 +76,8 @@ export function HomeView({
   onClearError,
   onRetryConnection,
   onUpdateProfile,
+  onRollDeck,
+  onRollAllDecks,
   onJoinRoom,
   onCreateRoom,
   onOpenBuilder,
@@ -84,6 +89,7 @@ export function HomeView({
   const [selectedDeckId, setSelectedDeckId] = useState<string>(allDecks[0]?.id ?? '');
   const [hostPlays, setHostPlays] = useState<boolean>(true);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [rollNotice, setRollNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialRoomCode) {
@@ -339,12 +345,35 @@ export function HomeView({
                 </div>
 
                 <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm text-slate-300">
-                  <span className="text-slate-400">ชุดคำถามที่เลือก: </span>
-                  <span className="font-bold text-white">{selectedDeck?.title}</span>
-                  <span className="text-slate-400 tabular-nums">
-                    {' '}
-                    · {selectedDeck?.questions.length} ข้อ
-                  </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="text-slate-400">ชุดคำถามที่เลือก: </span>
+                      <span className="font-bold text-white">{selectedDeck?.title}</span>
+                      <span className="text-slate-400 tabular-nums">
+                        {' '}
+                        · {selectedDeck?.questions.length} ข้อ
+                      </span>
+                    </div>
+                    {selectedDeck && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onRollDeck(selectedDeck.id);
+                          setRollNotice(`สุ่มชุดคำถามใหม่ในหมวด "${selectedDeck.title}" แล้ว`);
+                          setTimeout(() => setRollNotice(null), 2400);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs font-semibold text-indigo-300 hover:bg-slate-800 hover:text-white whitespace-nowrap shrink-0"
+                      >
+                        <Shuffle className="h-3 w-3" />
+                        <span>รันคำถามใหม่</span>
+                      </button>
+                    )}
+                  </div>
+                  {selectedDeck?.questions[0] && (
+                    <p className="mt-1.5 truncate text-xs text-slate-400">
+                      ข้อแรก: {selectedDeck.questions[0].prompt}
+                    </p>
+                  )}
                 </div>
 
                 <button
@@ -368,21 +397,37 @@ export function HomeView({
           className="lg:col-span-6 flex flex-col justify-between rounded-2xl border border-slate-800/90 bg-slate-900/85 p-7 shadow-2xl backdrop-blur-md sm:p-9"
         >
           <div>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-extrabold text-white">คลังชุดคำถามพร้อมเล่น</h2>
+                <h2 className="text-xl font-extrabold text-white">
+                  คลังชุดคำถาม ({allDecks.length} หมวด)
+                </h2>
                 <p className="mt-1 text-sm text-slate-400">
-                  เลือกชุดคำถามที่ถูกใจ หรือสร้างควิซใหม่พร้อมรูปภาพได้เอง
+                  {rollNotice || 'ทุกหมวดมี 10 คำถาม พร้อมปุ่มรันชุดคำถามใหม่ได้ตลอด'}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={onOpenBuilder}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2 text-sm font-semibold text-slate-100 transition-colors hover:bg-slate-700 whitespace-nowrap shrink-0"
-              >
-                <Plus className="h-4 w-4" />
-                <span>สร้างควิซเอง</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRollAllDecks();
+                    setRollNotice('รันคำถามใหม่ทุกหมวดเรียบร้อยแล้ว');
+                    setTimeout(() => setRollNotice(null), 2400);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/40 bg-indigo-950/60 px-3 py-2 text-xs font-bold text-indigo-200 transition-colors hover:bg-indigo-900/70 hover:text-white whitespace-nowrap shrink-0"
+                >
+                  <Shuffle className="h-3.5 w-3.5" />
+                  <span>รันคำถามใหม่ทุกหมวด</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenBuilder}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-100 transition-colors hover:bg-slate-700 whitespace-nowrap shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>สร้างควิซเอง</span>
+                </button>
+              </div>
             </div>
 
             <div className="mt-6 space-y-3 max-h-[540px] overflow-y-auto pr-1">

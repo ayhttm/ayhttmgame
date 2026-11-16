@@ -67,6 +67,7 @@ export interface SanitizedQuestion {
 export interface RoomSnapshot {
   roomCode: string;
   phase: GamePhase;
+  quizId?: string;
   quizTitle: string;
   quizCategory: string;
   totalQuestions: number;
@@ -136,6 +137,7 @@ export type ClientMessage =
     }
   | {
       type: 'host:restart_game';
+      quiz?: QuizDeck;
     }
   | {
       type: 'player:react';

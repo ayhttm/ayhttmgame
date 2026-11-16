@@ -3,7 +3,7 @@ import { HomeView } from './components/HomeView.tsx';
 import { QuizBuilderView } from './components/QuizBuilderView.tsx';
 import { RoomArena } from './components/RoomArena.tsx';
 import { TopBar, type AppView } from './components/TopBar.tsx';
-import { PRESET_QUIZ_DECKS } from './data/presets.ts';
+import { PRESET_QUIZ_DECKS, rollAllPresetDecks, rollDeckQuestions } from './data/presets.ts';
 import { useQuizSocket } from './hooks/useQuizSocket.ts';
 import type { AvatarColor, QuizDeck } from './types/quiz.ts';
 
@@ -49,13 +49,14 @@ export default function App() {
   const [navCounter, setNavCounter] = useState<number>(0);
   const [urlRoomCode, setUrlRoomCode] = useState<string>(() => getRoomCodeFromUrl());
   const [customDecks, setCustomDecks] = useState<QuizDeck[]>(() => loadCustomDecks());
+  const [presetDecks, setPresetDecks] = useState<QuizDeck[]>(() => PRESET_QUIZ_DECKS);
   const [profile, setProfile] = useState<{ name: string; color: AvatarColor }>(() =>
     loadProfile()
   );
 
   const allDecks = useMemo(
-    () => [...customDecks, ...PRESET_QUIZ_DECKS],
-    [customDecks]
+    () => [...customDecks, ...presetDecks],
+    [customDecks, presetDecks]
   );
 
   useEffect(() => {
@@ -98,6 +99,26 @@ export default function App() {
 
   const handleDeleteDeck = (deckId: string) => {
     setCustomDecks((prev) => prev.filter((d) => d.id !== deckId));
+  };
+
+  const handleRollDeck = (deckId: string): QuizDeck | null => {
+    const customTarget = customDecks.find((d) => d.id === deckId);
+    if (customTarget) {
+      const rolled = rollDeckQuestions(customTarget);
+      setCustomDecks((prev) => prev.map((d) => (d.id === deckId ? rolled : d)));
+      return rolled;
+    }
+    const presetTarget = presetDecks.find((d) => d.id === deckId);
+    if (presetTarget) {
+      const rolled = rollDeckQuestions(presetTarget);
+      setPresetDecks((prev) => prev.map((d) => (d.id === deckId ? rolled : d)));
+      return rolled;
+    }
+    return null;
+  };
+
+  const handleRollAllDecks = () => {
+    setPresetDecks((prev) => rollAllPresetDecks(prev));
   };
 
   const handleHostFromBuilder = (deck: QuizDeck) => {
@@ -149,6 +170,7 @@ export default function App() {
           onRetryConnection={socket.retryConnection}
           onUpdateSettings={socket.updateSettings}
           onChangeQuiz={socket.changeQuiz}
+          onRollDeck={handleRollDeck}
           onStartGame={socket.startGame}
           onSubmitAnswer={socket.submitAnswer}
           onEndQuestion={socket.endQuestion}
@@ -179,6 +201,8 @@ export default function App() {
           onClearError={socket.clearError}
           onRetryConnection={socket.retryConnection}
           onUpdateProfile={handleUpdateProfile}
+          onRollDeck={handleRollDeck}
+          onRollAllDecks={handleRollAllDecks}
           onJoinRoom={(code, name, color) => {
             handleUpdateProfile(name, color);
             socket.joinRoom(code, name, color);

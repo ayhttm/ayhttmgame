@@ -238,6 +238,7 @@ function buildSnapshot(room: RoomState): RoomSnapshot {
   return {
     roomCode: room.roomCode,
     phase: room.phase,
+    quizId: room.quiz.id,
     quizTitle: room.quiz.title,
     quizCategory: room.quiz.category,
     totalQuestions: room.quiz.questions.length,
@@ -740,6 +741,12 @@ async function startServer() {
 
       if (msg.type === 'host:restart_game') {
         clearRoomTimer(room);
+        if (msg.quiz) {
+          const cleanQuiz = sanitizeQuiz(msg.quiz);
+          if (cleanQuiz) {
+            room.quiz = cleanQuiz;
+          }
+        }
         room.phase = 'LOBBY';
         room.currentQuestionIndex = 0;
         room.phaseStartedAt = Date.now();

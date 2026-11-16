@@ -1008,9 +1008,12 @@ export function useQuizSocket() {
     sendMessage({ type: 'host:next_step' });
   }, [sendMessage]);
 
-  const restartGame = useCallback(() => {
-    sendMessage({ type: 'host:restart_game' });
-  }, [sendMessage]);
+  const restartGame = useCallback(
+    (quiz?: QuizDeck) => {
+      sendMessage({ type: 'host:restart_game', ...(quiz ? { quiz } : {}) });
+    },
+    [sendMessage]
+  );
 
   const sendReaction = useCallback(
     (label: string) => {

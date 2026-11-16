@@ -15,6 +15,7 @@ import {
   Rocket,
   RotateCcw,
   Shield,
+  Shuffle,
   Star,
   Users,
   Volume2,
@@ -61,11 +62,12 @@ interface RoomArenaProps {
   onRetryConnection: () => void;
   onUpdateSettings: (settings: Partial<RoomSettings>) => void;
   onChangeQuiz: (deck: QuizDeck) => void;
+  onRollDeck: (deckId: string) => QuizDeck | null;
   onStartGame: () => void;
   onSubmitAnswer: (optionIndex: number) => void;
   onEndQuestion: () => void;
   onNextStep: () => void;
-  onRestartGame: () => void;
+  onRestartGame: (quiz?: QuizDeck) => void;
   onSendReaction: (label: string) => void;
   onLeaveRoom: () => void;
 }
@@ -83,6 +85,7 @@ export function RoomArena({
   onRetryConnection,
   onUpdateSettings,
   onChangeQuiz,
+  onRollDeck,
   onStartGame,
   onSubmitAnswer,
   onEndQuestion,
@@ -389,16 +392,36 @@ export function RoomArena({
             {isHost && (
               <div className="mt-6 space-y-4 border-t border-slate-800 pt-6">
                 <div>
-                  <label
-                    htmlFor="lobby-deck-select"
-                    className="block text-sm font-medium text-slate-200"
-                  >
-                    เปลี่ยนชุดคำถามในห้องนี้
-                  </label>
+                  <div className="flex items-center justify-between gap-2">
+                    <label
+                      htmlFor="lobby-deck-select"
+                      className="block text-sm font-medium text-slate-200"
+                    >
+                      เปลี่ยนชุดคำถามในห้องนี้
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const currentDeck =
+                          allDecks.find((d) => d.id === room.quizId) ??
+                          allDecks.find((d) => d.title === room.quizTitle);
+                        if (currentDeck) {
+                          const rolled = onRollDeck(currentDeck.id);
+                          if (rolled) onChangeQuiz(rolled);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-indigo-500/40 bg-indigo-950/60 px-2.5 py-1 text-xs font-semibold text-indigo-200 hover:bg-indigo-900/70 hover:text-white whitespace-nowrap shrink-0"
+                    >
+                      <Shuffle className="h-3 w-3" />
+                      <span>รันคำถามใหม่</span>
+                    </button>
+                  </div>
                   <select
                     id="lobby-deck-select"
                     value={
-                      allDecks.find((d) => d.title === room.quizTitle)?.id ?? ''
+                      allDecks.find((d) => d.id === room.quizId)?.id ??
+                      allDecks.find((d) => d.title === room.quizTitle)?.id ??
+                      ''
                     }
                     onChange={(e) => {
                       const found = allDecks.find((d) => d.id === e.target.value);
@@ -935,19 +958,35 @@ export function RoomArena({
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               {isHost && (
-                <button
-                  type="button"
-                  onClick={onRestartGame}
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-500 whitespace-nowrap shrink-0"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  <span>เล่นอีกครั้ง (ห้องเดิม)</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentDeck =
+                        allDecks.find((d) => d.id === room.quizId) ??
+                        allDecks.find((d) => d.title === room.quizTitle);
+                      const rolled = currentDeck ? onRollDeck(currentDeck.id) : null;
+                      onRestartGame(rolled ?? undefined);
+                    }}
+                    className="inline-flex items-center gap-2 rounded-xl border-b-2 border-indigo-800 bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-500 whitespace-nowrap shrink-0"
+                  >
+                    <Shuffle className="h-4 w-4" />
+                    <span>เล่นต่อ · รันคำถามใหม่</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRestartGame()}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-700 whitespace-nowrap shrink-0"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    <span>เล่นชุดเดิมอีกครั้ง</span>
+                  </button>
+                </>
               )}
               <button
                 type="button"
                 onClick={onLeaveRoom}
-                className="rounded-xl border border-slate-700 bg-slate-800 px-6 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-700 whitespace-nowrap shrink-0"
+                className="rounded-xl border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-800 whitespace-nowrap shrink-0"
               >
                 ออกจากห้อง
               </button>
