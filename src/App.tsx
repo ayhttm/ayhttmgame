@@ -162,6 +162,8 @@ export default function App() {
           playerColor={profile.color}
           allDecks={allDecks}
           connectionStatus={socket.status}
+          transportMode={socket.transportMode}
+          isSubmitting={socket.isSubmitting}
           errorMessage={socket.errorMessage}
           onClearError={socket.clearError}
           onUpdateProfile={handleUpdateProfile}

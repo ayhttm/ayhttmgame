@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Check, Layers, Plus, Timer, Users, Zap } from 'lucide-react';
 import type { AvatarColor, QuizDeck } from '../types/quiz.ts';
+import type { ConnectionStatus, TransportMode } from '../hooks/useQuizSocket.ts';
 import { AVATAR_COLOR_LIST, AVATAR_STYLES } from '../utils/avatars.ts';
 
 interface HomeViewProps {
@@ -9,7 +10,9 @@ interface HomeViewProps {
   playerName: string;
   playerColor: AvatarColor;
   allDecks: QuizDeck[];
-  connectionStatus: string;
+  connectionStatus: ConnectionStatus;
+  transportMode: TransportMode;
+  isSubmitting: boolean;
   errorMessage: string | null;
   onClearError: () => void;
   onUpdateProfile: (name: string, color: AvatarColor) => void;
@@ -30,6 +33,8 @@ export function HomeView({
   playerColor,
   allDecks,
   connectionStatus,
+  transportMode,
+  isSubmitting,
   errorMessage,
   onClearError,
   onUpdateProfile,
@@ -237,10 +242,10 @@ export function HomeView({
                 </div>
                 <button
                   type="submit"
-                  disabled={connectionStatus === 'disconnected'}
+                  disabled={connectionStatus !== 'connected' || isSubmitting}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-base font-bold text-white transition-colors hover:bg-indigo-500 disabled:opacity-50"
                 >
-                  <span>เข้าร่วมห้อง</span>
+                  <span>{isSubmitting ? 'กำลังเข้าร่วมห้อง...' : 'เข้าร่วมห้อง'}</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </form>
@@ -285,10 +290,10 @@ export function HomeView({
 
                 <button
                   type="submit"
-                  disabled={connectionStatus === 'disconnected'}
+                  disabled={connectionStatus !== 'connected' || isSubmitting}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-base font-bold text-white transition-colors hover:bg-indigo-500 disabled:opacity-50"
                 >
-                  <span>เปิดห้องและรับรหัสห้อง</span>
+                  <span>{isSubmitting ? 'กำลังเปิดห้อง...' : 'เปิดห้องและรับรหัสห้อง'}</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </form>
@@ -368,13 +373,15 @@ export function HomeView({
           </div>
 
           <div className="mt-6 border-t border-slate-800 pt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
-            <span>สถานะการเชื่อมต่อเซิร์ฟเวอร์</span>
+            <span>สถานะการเชื่อมต่อระบบห้อง</span>
             <span className="font-medium text-slate-200">
               {connectionStatus === 'connected'
-                ? 'พร้อมใช้งาน (เชื่อมต่อเรียลไทม์แล้ว)'
+                ? transportMode === 'peer'
+                  ? 'พร้อมใช้งาน (โหมดออนไลน์ Peer-to-Peer)'
+                  : 'พร้อมใช้งาน (เชื่อมต่อเซิร์ฟเวอร์เรียลไทม์แล้ว)'
                 : connectionStatus === 'reconnecting'
                 ? 'กำลังเชื่อมต่อใหม่...'
-                : 'กำลังเชื่อมต่อ...'}
+                : 'กำลังตรวจสอบการเชื่อมต่อ...'}
             </span>
           </div>
         </section>
