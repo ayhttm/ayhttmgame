@@ -61,6 +61,15 @@ export interface PeerHostCallbacks {
   onError: (message: string) => void;
 }
 
+export class PeerSignalingError extends Error {
+  public readonly code: 'SIGNALING_TIMEOUT' | 'CREATE_FAILED';
+
+  constructor(code: 'SIGNALING_TIMEOUT' | 'CREATE_FAILED', message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
 export class PeerRoomHost {
   public roomCode = '';
   private peer: Peer | null = null;
@@ -114,30 +123,45 @@ export class PeerRoomHost {
 
   public start(): Promise<string> {
     return new Promise((resolve, reject) => {
-      let attempts = 0;
+      const maxIdAttempts = 5;
+      const maxSignalingRetries = 2;
+      let idAttempts = 0;
+      let signalingAttempts = 0;
+      let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
       const tryOpen = () => {
         if (this.destroyed) {
-          reject(new Error('Host destroyed'));
+          if (retryTimer) clearTimeout(retryTimer);
+          reject(new PeerSignalingError('CREATE_FAILED', 'ยกเลิกการเปิดห้องแล้ว'));
           return;
         }
-        attempts += 1;
+        idAttempts += 1;
+        signalingAttempts += 1;
         const candidateCode = generateRoomCode();
         const peer = new Peer(peerIdForRoom(candidateCode), PEER_CONFIG);
         let settled = false;
 
-        const openTimeout = setTimeout(() => {
-          if (!settled) {
-            settled = true;
-            peer.destroy();
-            reject(new Error('เชื่อมต่อเซิร์ฟเวอร์ห้อง P2P ไม่ทันเวลา กรุณาลองใหม่อีกครั้ง'));
+        const signalingTimeout = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          peer.removeAllListeners();
+          peer.destroy();
+          if (signalingAttempts < maxSignalingRetries && !this.destroyed) {
+            retryTimer = setTimeout(tryOpen, 750);
+            return;
           }
-        }, 10000);
+          reject(
+            new PeerSignalingError(
+              'SIGNALING_TIMEOUT',
+              'การเชื่อมต่อเซิร์ฟเวอร์สัญญาณหมดเวลา (Connection timed out) กรุณาลองเชื่อมต่อใหม่'
+            )
+          );
+        }, 6500);
 
         peer.on('open', () => {
           if (settled) return;
           settled = true;
-          clearTimeout(openTimeout);
+          clearTimeout(signalingTimeout);
           this.roomCode = candidateCode;
           this.peer = peer;
           this.attachPeerListeners(peer);
@@ -146,16 +170,36 @@ export class PeerRoomHost {
         });
 
         peer.on('error', (err: { type?: string; message?: string }) => {
-          if (!settled) {
-            clearTimeout(openTimeout);
-            settled = true;
-            peer.destroy();
-            if (err.type === 'unavailable-id' && attempts < 5) {
-              tryOpen();
-              return;
-            }
-            reject(new Error('ไม่สามารถเปิดห้องออนไลน์ได้ กรุณาลองใหม่อีกครั้ง'));
+          if (settled) return;
+          clearTimeout(signalingTimeout);
+          settled = true;
+          peer.removeAllListeners();
+          peer.destroy();
+
+          if (err.type === 'unavailable-id' && idAttempts < maxIdAttempts) {
+            signalingAttempts = Math.max(0, signalingAttempts - 1);
+            tryOpen();
+            return;
           }
+
+          if (
+            (err.type === 'network' ||
+              err.type === 'server-error' ||
+              err.type === 'socket-error' ||
+              err.type === 'socket-closed') &&
+            signalingAttempts < maxSignalingRetries &&
+            !this.destroyed
+          ) {
+            retryTimer = setTimeout(tryOpen, 750);
+            return;
+          }
+
+          reject(
+            new PeerSignalingError(
+              'SIGNALING_TIMEOUT',
+              'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์สัญญาณเพื่อเปิดห้องได้ (Connection timed out)'
+            )
+          );
         });
       };
 
@@ -174,6 +218,25 @@ export class PeerRoomHost {
           return;
         }
         this.handleClientMessage(conn, msg);
+      });
+
+      conn.on('error', () => {
+        const cid = this.connToClient.get(conn);
+        if (!cid) return;
+        this.connToClient.delete(conn);
+        if (this.connections.get(cid) === conn) {
+          this.connections.delete(cid);
+          const p = this.players.get(cid);
+          if (p) {
+            if (this.phase === 'LOBBY') {
+              this.players.delete(cid);
+            } else {
+              p.connected = false;
+              this.checkAllAnswered();
+            }
+            this.broadcastState();
+          }
+        }
       });
 
       conn.on('close', () => {
@@ -236,6 +299,7 @@ export class PeerRoomHost {
         prompt: rawQuestion.prompt,
         options: rawQuestion.options,
         timeLimitSec,
+        ...(rawQuestion.imageUrl ? { imageUrl: rawQuestion.imageUrl } : {}),
         ...(showAnswer
           ? {
               correctIndex: rawQuestion.correctIndex,

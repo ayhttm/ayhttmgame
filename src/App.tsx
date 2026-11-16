@@ -46,6 +46,7 @@ export default function App() {
   const socket = useQuizSocket();
   const [view, setView] = useState<AppView>('home');
   const [homeMode, setHomeMode] = useState<'join' | 'create'>('create');
+  const [navCounter, setNavCounter] = useState<number>(0);
   const [urlRoomCode, setUrlRoomCode] = useState<string>(() => getRoomCodeFromUrl());
   const [customDecks, setCustomDecks] = useState<QuizDeck[]>(() => loadCustomDecks());
   const [profile, setProfile] = useState<{ name: string; color: AvatarColor }>(() =>
@@ -66,11 +67,14 @@ export default function App() {
   }, [customDecks]);
 
   useEffect(() => {
-    if (socket.room && typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+    if (socket.room) {
       const nextUrl = `${window.location.pathname}?room=${socket.room.roomCode}`;
       window.history.replaceState(null, '', nextUrl);
+    } else if (window.location.search.includes('room=') && !urlRoomCode) {
+      window.history.replaceState(null, '', window.location.pathname);
     }
-  }, [socket.room]);
+  }, [socket.room, urlRoomCode]);
 
   const handleUpdateProfile = (name: string, color: AvatarColor) => {
     const next = { name, color };
@@ -114,8 +118,12 @@ export default function App() {
     setView(nextView);
     if (focusMode) {
       setHomeMode(focusMode);
+      setNavCounter((n) => n + 1);
       if (focusMode === 'create') {
         setUrlRoomCode('');
+        if (typeof window !== 'undefined') {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
       }
     }
   };
@@ -136,7 +144,9 @@ export default function App() {
           clockOffsetMs={socket.clockOffsetMs}
           allDecks={allDecks}
           reactions={socket.reactions}
+          connectionStatus={socket.status}
           errorMessage={socket.errorMessage}
+          onRetryConnection={socket.retryConnection}
           onUpdateSettings={socket.updateSettings}
           onChangeQuiz={socket.changeQuiz}
           onStartGame={socket.startGame}
@@ -157,6 +167,7 @@ export default function App() {
       ) : (
         <HomeView
           initialMode={homeMode}
+          navCounter={navCounter}
           initialRoomCode={urlRoomCode}
           playerName={profile.name}
           playerColor={profile.color}
@@ -166,6 +177,7 @@ export default function App() {
           isSubmitting={socket.isSubmitting}
           errorMessage={socket.errorMessage}
           onClearError={socket.clearError}
+          onRetryConnection={socket.retryConnection}
           onUpdateProfile={handleUpdateProfile}
           onJoinRoom={(code, name, color) => {
             handleUpdateProfile(name, color);

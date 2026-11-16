@@ -6,6 +6,7 @@ import { AVATAR_COLOR_LIST, AVATAR_STYLES } from '../utils/avatars.ts';
 
 interface HomeViewProps {
   initialMode: 'join' | 'create';
+  navCounter: number;
   initialRoomCode: string;
   playerName: string;
   playerColor: AvatarColor;
@@ -15,6 +16,7 @@ interface HomeViewProps {
   isSubmitting: boolean;
   errorMessage: string | null;
   onClearError: () => void;
+  onRetryConnection: () => void;
   onUpdateProfile: (name: string, color: AvatarColor) => void;
   onJoinRoom: (roomCode: string, playerName: string, color: AvatarColor) => void;
   onCreateRoom: (
@@ -28,6 +30,7 @@ interface HomeViewProps {
 
 export function HomeView({
   initialMode,
+  navCounter,
   initialRoomCode,
   playerName,
   playerColor,
@@ -37,6 +40,7 @@ export function HomeView({
   isSubmitting,
   errorMessage,
   onClearError,
+  onRetryConnection,
   onUpdateProfile,
   onJoinRoom,
   onCreateRoom,
@@ -57,7 +61,7 @@ export function HomeView({
     } else {
       setMode(initialMode);
     }
-  }, [initialMode, initialRoomCode]);
+  }, [initialMode, initialRoomCode, navCounter]);
 
   useEffect(() => {
     if (!allDecks.some((d) => d.id === selectedDeckId) && allDecks.length > 0) {
@@ -208,12 +212,24 @@ export function HomeView({
               </div>
             </div>
 
-            {displayError && (
+            {(displayError || connectionStatus === 'timed_out') && (
               <div
                 role="alert"
-                className="mt-5 rounded-xl border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-sm text-rose-200"
+                className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-sm text-rose-200"
               >
-                {displayError}
+                <span>
+                  {displayError ||
+                    'การเชื่อมต่อเซิร์ฟเวอร์สัญญาณหมดเวลา (Connection timed out)'}
+                </span>
+                {connectionStatus === 'timed_out' && (
+                  <button
+                    type="button"
+                    onClick={onRetryConnection}
+                    className="rounded-lg border border-rose-400/50 bg-rose-900/60 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-800 whitespace-nowrap shrink-0"
+                  >
+                    ลองเชื่อมต่อใหม่
+                  </button>
+                )}
               </div>
             )}
 
@@ -374,15 +390,36 @@ export function HomeView({
 
           <div className="mt-6 border-t border-slate-800 pt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
             <span>สถานะการเชื่อมต่อระบบห้อง</span>
-            <span className="font-medium text-slate-200">
-              {connectionStatus === 'connected'
-                ? transportMode === 'peer'
-                  ? 'พร้อมใช้งาน (โหมดออนไลน์ Peer-to-Peer)'
-                  : 'พร้อมใช้งาน (เชื่อมต่อเซิร์ฟเวอร์เรียลไทม์แล้ว)'
-                : connectionStatus === 'reconnecting'
-                ? 'กำลังเชื่อมต่อใหม่...'
-                : 'กำลังตรวจสอบการเชื่อมต่อ...'}
-            </span>
+            <div className="flex items-center gap-3">
+              <span
+                className={`font-medium ${
+                  connectionStatus === 'timed_out'
+                    ? 'text-rose-300'
+                    : connectionStatus === 'connected'
+                    ? 'text-emerald-300'
+                    : 'text-slate-200'
+                }`}
+              >
+                {connectionStatus === 'connected'
+                  ? transportMode === 'peer'
+                    ? 'พร้อมใช้งาน (โหมดออนไลน์ Peer-to-Peer)'
+                    : 'พร้อมใช้งาน (เชื่อมต่อเซิร์ฟเวอร์เรียลไทม์แล้ว)'
+                  : connectionStatus === 'timed_out'
+                  ? 'หมดเวลาการเชื่อมต่อ (Connection timed out)'
+                  : connectionStatus === 'reconnecting'
+                  ? 'กำลังลองเชื่อมต่อใหม่...'
+                  : 'กำลังตรวจสอบการเชื่อมต่อ...'}
+              </span>
+              {connectionStatus === 'timed_out' && (
+                <button
+                  type="button"
+                  onClick={onRetryConnection}
+                  className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-700 whitespace-nowrap shrink-0"
+                >
+                  เชื่อมต่อใหม่
+                </button>
+              )}
+            </div>
           </div>
         </section>
       </div>

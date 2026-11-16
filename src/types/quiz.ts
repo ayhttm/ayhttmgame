@@ -21,6 +21,7 @@ export interface QuizQuestion {
   correctIndex: number;
   timeLimitSec?: number;
   explanation?: string;
+  imageUrl?: string;
 }
 
 export interface QuizDeck {
@@ -58,6 +59,7 @@ export interface SanitizedQuestion {
   prompt: string;
   options: string[];
   timeLimitSec: number;
+  imageUrl?: string;
   correctIndex?: number;
   explanation?: string;
 }

@@ -17,6 +17,14 @@ class SoundEngine {
     return this.ctx;
   }
 
+  public unlock() {
+    if (this.muted || typeof window === 'undefined') return;
+    const ctx = this.getContext();
+    if (ctx && ctx.state === 'suspended') {
+      void ctx.resume();
+    }
+  }
+
   public setMuted(muted: boolean) {
     this.muted = muted;
   }
@@ -43,7 +51,7 @@ class SoundEngine {
     osc.frequency.setValueAtTime(freq, start);
 
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(volume, start + 0.015);
+    gain.gain.exponentialRampToValueAtTime(volume, start + 0.012);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + durationSec);
 
     osc.connect(gain);
@@ -53,8 +61,23 @@ class SoundEngine {
     osc.stop(start + durationSec + 0.02);
   }
 
-  public playTick(urgent = false) {
-    this.playTone(urgent ? 880 : 620, 0.08, 'triangle', urgent ? 0.08 : 0.045);
+  public playCountdownStep(step: number) {
+    const freq = step === 1 ? 698.46 : step === 2 ? 587.33 : 523.25;
+    this.playTone(freq, 0.14, 'triangle', 0.085);
+  }
+
+  public playQuestionStart() {
+    this.playTone(783.99, 0.1, 'triangle', 0.08, 0);
+    this.playTone(1046.5, 0.18, 'triangle', 0.09, 0.07);
+  }
+
+  public playTick(urgent = false, secLeft?: number) {
+    if (urgent) {
+      const freq = secLeft === 1 ? 1046.5 : secLeft === 2 ? 932.33 : 880;
+      this.playTone(freq, 0.09, 'triangle', 0.08);
+      return;
+    }
+    this.playTone(540, 0.045, 'sine', 0.032);
   }
 
   public playLockIn() {

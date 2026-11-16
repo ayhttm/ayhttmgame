@@ -6,6 +6,7 @@ import {
   Award,
   Check,
   Copy,
+  ImageOff,
   Link2,
   Play,
   RotateCcw,
@@ -13,7 +14,9 @@ import {
   Volume2,
   VolumeX,
   X,
+  ZoomIn,
 } from 'lucide-react';
+import type { ConnectionStatus } from '../hooks/useQuizSocket.ts';
 import type {
   QuizDeck,
   ReactionBurst,
@@ -29,7 +32,9 @@ interface RoomArenaProps {
   clockOffsetMs: number;
   allDecks: QuizDeck[];
   reactions: ReactionBurst[];
+  connectionStatus: ConnectionStatus;
   errorMessage: string | null;
+  onRetryConnection: () => void;
   onUpdateSettings: (settings: Partial<RoomSettings>) => void;
   onChangeQuiz: (deck: QuizDeck) => void;
   onStartGame: () => void;
@@ -49,7 +54,9 @@ export function RoomArena({
   clockOffsetMs,
   allDecks,
   reactions,
+  connectionStatus,
   errorMessage,
+  onRetryConnection,
   onUpdateSettings,
   onChangeQuiz,
   onStartGame,
@@ -65,6 +72,8 @@ export function RoomArena({
   const [copiedLink, setCopiedLink] = useState(false);
   const [remainingMs, setRemainingMs] = useState<number>(room.phaseDurationMs);
   const [optimisticOption, setOptimisticOption] = useState<number | null>(null);
+  const [imageBroken, setImageBroken] = useState<boolean>(false);
+  const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
 
   const lastTickSecRef = useRef<number | null>(null);
   const lastSoundPhaseRef = useRef<string>('');
@@ -80,13 +89,26 @@ export function RoomArena({
     return `${window.location.origin}/?room=${room.roomCode}`;
   }, [room.roomCode]);
 
-  // Reset optimistic option when moving to a new question
+  // Unlock AudioContext on first user interaction inside the arena
+  useEffect(() => {
+    const unlock = () => soundEngine.unlock();
+    window.addEventListener('pointerdown', unlock, { passive: true });
+    window.addEventListener('keydown', unlock, { passive: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
+
+  // Reset optimistic option and image state when moving to a new question
   useEffect(() => {
     setOptimisticOption(null);
+    setImageBroken(false);
+    setZoomedImageUrl(null);
     lastTickSecRef.current = null;
   }, [room.currentQuestionIndex, room.phase]);
 
-  // High-resolution synced timer
+  // High-resolution synced timer with countdown audio cues
   useEffect(() => {
     if (room.phaseDurationMs <= 0) {
       setRemainingMs(0);
@@ -99,11 +121,16 @@ export function RoomArena({
       const left = Math.max(0, room.phaseDurationMs - elapsed);
       setRemainingMs(left);
 
-      if (room.phase === 'QUESTION') {
-        const secLeft = Math.ceil(left / 1000);
+      const secLeft = Math.ceil(left / 1000);
+      if (room.phase === 'COUNTDOWN') {
         if (secLeft >= 1 && secLeft <= 3 && lastTickSecRef.current !== secLeft) {
           lastTickSecRef.current = secLeft;
-          soundEngine.playTick(true);
+          soundEngine.playCountdownStep(secLeft);
+        }
+      } else if (room.phase === 'QUESTION') {
+        if (secLeft >= 1 && lastTickSecRef.current !== secLeft) {
+          lastTickSecRef.current = secLeft;
+          soundEngine.playTick(secLeft <= 5, secLeft);
         }
       }
     };
@@ -113,13 +140,15 @@ export function RoomArena({
     return () => clearInterval(interval);
   }, [room.phase, room.phaseStartedAt, room.phaseDurationMs, clockOffsetMs]);
 
-  // Sound & confetti cues on REVEAL and FINAL_PODIUM
+  // Sound & confetti cues on QUESTION start, REVEAL, and FINAL_PODIUM
   useEffect(() => {
     const phaseKey = `${room.phase}-${room.currentQuestionIndex}`;
     if (lastSoundPhaseRef.current === phaseKey) return;
     lastSoundPhaseRef.current = phaseKey;
 
-    if (room.phase === 'REVEAL' && me?.isPlaying && room.currentQuestion) {
+    if (room.phase === 'QUESTION') {
+      soundEngine.playQuestionStart();
+    } else if (room.phase === 'REVEAL' && me?.isPlaying && room.currentQuestion) {
       if (me.selectedOption === room.currentQuestion.correctIndex) {
         soundEngine.playCorrect();
       } else {
@@ -259,12 +288,26 @@ export function RoomArena({
         </div>
       </div>
 
-      {errorMessage && (
+      {(errorMessage || connectionStatus === 'timed_out' || connectionStatus === 'reconnecting') && (
         <div
           role="alert"
-          className="mt-4 rounded-xl border border-rose-500/40 bg-rose-950/60 px-4 py-3 text-sm text-rose-200"
+          className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/40 bg-rose-950/60 px-4 py-3 text-sm text-rose-200"
         >
-          {errorMessage}
+          <span>
+            {errorMessage ||
+              (connectionStatus === 'timed_out'
+                ? 'การเชื่อมต่อเซิร์ฟเวอร์หมดเวลา (Connection timed out)'
+                : 'สัญญาณขาดหาย กำลังลองเชื่อมต่อห้องใหม่...')}
+          </span>
+          {connectionStatus === 'timed_out' && (
+            <button
+              type="button"
+              onClick={onRetryConnection}
+              className="rounded-lg border border-rose-400/50 bg-rose-900/60 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-800 whitespace-nowrap shrink-0"
+            >
+              ลองเชื่อมต่อใหม่
+            </button>
+          )}
         </div>
       )}
 
@@ -543,6 +586,37 @@ export function RoomArena({
             <h2 className="mt-6 text-xl font-bold leading-snug text-white sm:text-2xl lg:text-3xl [text-wrap:balance]">
               {room.currentQuestion.prompt}
             </h2>
+
+            {room.currentQuestion.imageUrl && (
+              <div className="mt-5">
+                {imageBroken ? (
+                  <div className="flex h-48 w-full flex-col items-center justify-center gap-2 rounded-xl border border-slate-800 bg-slate-950/70 text-sm text-slate-400">
+                    <ImageOff className="h-6 w-6 text-slate-500" />
+                    <span>ไม่สามารถแสดงรูปภาพประกอบของข้อนี้ได้</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setZoomedImageUrl(room.currentQuestion?.imageUrl ?? null)
+                    }
+                    className="group relative mx-auto block w-full max-w-2xl overflow-hidden rounded-xl border border-slate-800 bg-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  >
+                    <img
+                      src={room.currentQuestion.imageUrl}
+                      alt={`ภาพประกอบคำถามข้อที่ ${room.currentQuestionIndex + 1}`}
+                      referrerPolicy="no-referrer"
+                      onError={() => setImageBroken(true)}
+                      className="mx-auto max-h-[260px] w-full object-contain sm:max-h-[320px]"
+                    />
+                    <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-lg bg-slate-950/80 px-2.5 py-1 text-xs font-medium text-slate-200 opacity-85 transition-opacity group-hover:opacity-100">
+                      <ZoomIn className="h-3.5 w-3.5" />
+                      <span>ขยายรูป</span>
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Personal Round Feedback on REVEAL */}
@@ -858,6 +932,32 @@ export function RoomArena({
             </div>
           )}
         </section>
+      )}
+
+      {/* Lightbox Modal for Question Image */}
+      {zoomedImageUrl && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setZoomedImageUrl(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm"
+        >
+          <button
+            type="button"
+            aria-label="ปิดภาพขยาย"
+            onClick={() => setZoomedImageUrl(null)}
+            className="absolute right-5 top-5 rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-white hover:bg-slate-800"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={zoomedImageUrl}
+            alt="ภาพประกอบคำถามขนาดขยาย"
+            referrerPolicy="no-referrer"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[85vh] max-w-full rounded-xl object-contain"
+          />
+        </div>
       )}
 
       {/* Ephemeral Cheer / Reaction Stream */}

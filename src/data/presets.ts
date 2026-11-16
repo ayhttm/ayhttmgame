@@ -1,4 +1,8 @@
 import type { QuizDeck } from '../types/quiz.ts';
+import herbalTurmericImg from '../assets/images/herbal_turmeric_roots_1794811037223.jpg';
+import herbalAloeImg from '../assets/images/herbal_aloe_gel_1794811038155.jpg';
+import scienceJupiterImg from '../assets/images/science_jupiter_space_1794811038394.jpg';
+import thailandMountainImg from '../assets/images/thailand_mountain_sunrise_1794811038636.jpg';
 
 export const PRESET_QUIZ_DECKS: QuizDeck[] = [
   {
@@ -46,6 +50,7 @@ export const PRESET_QUIZ_DECKS: QuizDeck[] = [
         options: ['ยาทิงเจอร์ทองพันชั่ง', 'ยาเบญจกูล', 'ยาว่านหางจระเข้', 'ยาหอมนวโกฐ'],
         correctIndex: 2,
         timeLimitSec: 20,
+        imageUrl: herbalAloeImg,
         explanation:
           'วุ้นเจลจากว่านหางจระเข้ช่วยเพิ่มความชุ่มชื้น ลดการอักเสบ และเร่งการสมานผิวจากแผลไฟไหม้หรือน้ำร้อนลวก',
       },
@@ -56,6 +61,7 @@ export const PRESET_QUIZ_DECKS: QuizDeck[] = [
         options: ['ยามะขามแขก', 'ยาขมิ้นชัน', 'ยาประสะมะแว้ง', 'ยาพญายอ'],
         correctIndex: 1,
         timeLimitSec: 20,
+        imageUrl: herbalTurmericImg,
         explanation:
           'ยาขมิ้นชันมีสารเคอร์คูมินและน้ำมันหอมระเหยช่วยขับลม ลดอาการท้องอืดเฟ้อ และช่วยสมานแผลในกระเพาะอาหาร',
       },
@@ -128,6 +134,7 @@ export const PRESET_QUIZ_DECKS: QuizDeck[] = [
         prompt: 'ดาวเคราะห์ดวงใดในระบบสุริยะที่มีขนาดใหญ่ที่สุด?',
         options: ['ดาวเสาร์', 'ดาวพฤหัสบดี', 'ดาวยูเรนัส', 'ดาวเนปจูน'],
         correctIndex: 1,
+        imageUrl: scienceJupiterImg,
         explanation: 'ดาวพฤหัสบดีเป็นดาวเคราะห์แก๊สยักษ์ที่มีมวลมากกว่าดาวเคราะห์ดวงอื่นรวมกันถึง 2.5 เท่า',
       },
       {
@@ -200,6 +207,7 @@ export const PRESET_QUIZ_DECKS: QuizDeck[] = [
         prompt: 'เครื่องเทศหลักที่ให้สีเหลืองนวลในแกงกะหรี่และข้าวหมกไก่คืออะไร?',
         options: ['ข่า', 'ขมิ้นชัน', 'กระชาย', 'ตะไคร้'],
         correctIndex: 1,
+        imageUrl: herbalTurmericImg,
         explanation: 'ขมิ้นชันอุดมด้วยสารเคอร์คูมินซึ่งให้สีเหลืองทองตามธรรมชาติและกลิ่นหอมเฉพาะตัว',
       },
       {
@@ -228,6 +236,7 @@ export const PRESET_QUIZ_DECKS: QuizDeck[] = [
         prompt: 'ดอยอินทนนท์ซึ่งเป็นจุดสูงสุดของประเทศไทย มีความสูงประมาณกี่เมตร?',
         options: ['1,865 เมตร', '2,565 เมตร', '3,120 เมตร', '3,776 เมตร'],
         correctIndex: 1,
+        imageUrl: thailandMountainImg,
         explanation: 'ยอดดอยอินทนนท์สูงประมาณ 2,565 เมตรจากระดับน้ำทะเลปานกลาง',
       },
       {

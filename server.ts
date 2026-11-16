@@ -77,6 +77,21 @@ function sanitizeName(name: unknown): string {
   return trimmed.length > 0 ? trimmed : 'ผู้เล่น';
 }
 
+function sanitizeImageUrl(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.length > 300000) return undefined;
+  if (
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('data:image/')
+  ) {
+    return trimmed;
+  }
+  return undefined;
+}
+
 function sanitizeQuiz(raw: QuizDeck): QuizDeck | null {
   if (!raw || !Array.isArray(raw.questions) || raw.questions.length === 0) return null;
   const defaultSec = Math.min(60, Math.max(5, Number(raw.defaultTimeLimitSec) || 15));
@@ -108,6 +123,7 @@ function sanitizeQuiz(raw: QuizDeck): QuizDeck | null {
         typeof q.explanation === 'string' && q.explanation.trim()
           ? q.explanation.trim().slice(0, 260)
           : undefined,
+      imageUrl: sanitizeImageUrl(q.imageUrl),
     });
   }
 
@@ -162,6 +178,7 @@ function buildSnapshot(room: RoomState): RoomSnapshot {
       prompt: rawQuestion.prompt,
       options: rawQuestion.options,
       timeLimitSec,
+      ...(rawQuestion.imageUrl ? { imageUrl: rawQuestion.imageUrl } : {}),
       ...(showAnswer
         ? {
             correctIndex: rawQuestion.correctIndex,
