@@ -3,7 +3,12 @@ import { HomeView } from './components/HomeView.tsx';
 import { QuizBuilderView } from './components/QuizBuilderView.tsx';
 import { RoomArena } from './components/RoomArena.tsx';
 import { TopBar, type AppView } from './components/TopBar.tsx';
-import { PRESET_QUIZ_DECKS, rollAllPresetDecks, rollDeckQuestions } from './data/presets.ts';
+import {
+  PRESET_QUIZ_DECKS,
+  markDeckQuestionsPlayed,
+  rollAllPresetDecks,
+  rollDeckQuestions,
+} from './data/presets.ts';
 import { useQuizSocket } from './hooks/useQuizSocket.ts';
 import type { AvatarColor, QuizDeck } from './types/quiz.ts';
 
@@ -171,7 +176,15 @@ export default function App() {
           onUpdateSettings={socket.updateSettings}
           onChangeQuiz={socket.changeQuiz}
           onRollDeck={handleRollDeck}
-          onStartGame={socket.startGame}
+          onStartGame={() => {
+            const activeDeck =
+              allDecks.find((d) => d.id === socket.room?.quizId) ??
+              allDecks.find((d) => d.title === socket.room?.quizTitle);
+            if (activeDeck && !activeDeck.isCustom) {
+              markDeckQuestionsPlayed(activeDeck);
+            }
+            socket.startGame();
+          }}
           onSubmitAnswer={socket.submitAnswer}
           onEndQuestion={socket.endQuestion}
           onNextStep={socket.nextStep}
@@ -209,6 +222,9 @@ export default function App() {
           }}
           onCreateRoom={(name, color, deck, hostPlays) => {
             handleUpdateProfile(name, color);
+            if (!deck.isCustom) {
+              markDeckQuestionsPlayed(deck);
+            }
             socket.createRoom(name, color, deck, { hostPlays });
           }}
           onOpenBuilder={() => setView('builder')}

@@ -8,12 +8,15 @@ import {
   Check,
   Compass,
   Copy,
+  Download,
   Heart,
   ImageOff,
   Link2,
   Play,
+  QrCode,
   Rocket,
   RotateCcw,
+  Share2,
   Shield,
   Shuffle,
   Star,
@@ -101,9 +104,11 @@ export function RoomArena({
   const [optimisticOption, setOptimisticOption] = useState<number | null>(null);
   const [imageBroken, setImageBroken] = useState<boolean>(false);
   const [zoomedImageUrl, setZoomedImageUrl] = useState<string | null>(null);
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
 
   const lastTickSecRef = useRef<number | null>(null);
   const lastSoundPhaseRef = useRef<string>('');
+  const shareQrContainerRef = useRef<HTMLDivElement | null>(null);
 
   const me = useMemo(
     () => room.players.find((p) => p.clientId === clientId) ?? null,
@@ -134,6 +139,19 @@ export function RoomArena({
     setZoomedImageUrl(null);
     lastTickSecRef.current = null;
   }, [room.currentQuestionIndex, room.phase]);
+
+  // Close modals on Escape key
+  useEffect(() => {
+    if (!showShareModal && !zoomedImageUrl) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowShareModal(false);
+        setZoomedImageUrl(null);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showShareModal, zoomedImageUrl]);
 
   // High-resolution synced timer with countdown audio cues
   useEffect(() => {
@@ -238,6 +256,50 @@ export function RoomArena({
     }
   };
 
+  const downloadQrCode = () => {
+    const svgEl = shareQrContainerRef.current?.querySelector('svg');
+    if (!svgEl) return;
+    const serializer = new XMLSerializer();
+    const svgText = serializer.serializeToString(svgEl);
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const padding = 24;
+      const size = 256;
+      const canvas = document.createElement('canvas');
+      canvas.width = size + padding * 2;
+      canvas.height = size + padding * 2;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, padding, padding, size, size);
+        const pngUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = pngUrl;
+        link.download = `quizsync-room-${room.roomCode}.png`;
+        link.click();
+      }
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => URL.revokeObjectURL(url);
+    img.src = url;
+  };
+
+  const shareNativeLink = async () => {
+    if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') return;
+    try {
+      await navigator.share({
+        title: `QuizSync · ห้อง ${room.roomCode}`,
+        text: `มาร่วมเล่นควิซ "${room.quizTitle}" รหัสห้อง ${room.roomCode}`,
+        url: inviteUrl,
+      });
+    } catch {
+      // Ignore cancelled share sheet
+    }
+  };
+
   const handleSelectOption = (idx: number) => {
     if (room.phase !== 'QUESTION' || !me?.isPlaying || me.answeredCurrent) return;
     setOptimisticOption(idx);
@@ -297,11 +359,22 @@ export function RoomArena({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           {me?.isPlaying && (
             <div className="text-sm font-semibold text-slate-200 tabular-nums">
               คะแนนของคุณ: <span className="text-indigo-300">{me.score.toLocaleString()}</span>
             </div>
+          )}
+          {isHost && (
+            <button
+              type="button"
+              onClick={() => setShowShareModal(true)}
+              aria-label="Share room QR code"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/50 bg-indigo-600/90 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-indigo-500 whitespace-nowrap shrink-0"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              <span>แชร์ (Share)</span>
+            </button>
           )}
           <button
             type="button"
@@ -379,14 +452,26 @@ export function RoomArena({
               <p className="mt-3 text-sm text-slate-300">
                 สแกน QR Code เพื่อเข้าห้องจากมือถือทันที
               </p>
-              <button
-                type="button"
-                onClick={copyInviteLink}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 whitespace-nowrap shrink-0"
-              >
-                <Link2 className="h-3.5 w-3.5" />
-                <span>{copiedLink ? 'คัดลอกลิงก์เชิญแล้ว' : 'คัดลอกลิงก์เชิญเข้าห้อง'}</span>
-              </button>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={copyInviteLink}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 whitespace-nowrap shrink-0"
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  <span>{copiedLink ? 'คัดลอกลิงก์เชิญแล้ว' : 'คัดลอกลิงก์เชิญเข้าห้อง'}</span>
+                </button>
+                {isHost && (
+                  <button
+                    type="button"
+                    onClick={() => setShowShareModal(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/40 bg-indigo-950/70 px-3.5 py-2 text-xs font-bold text-indigo-200 hover:bg-indigo-900/80 hover:text-white whitespace-nowrap shrink-0"
+                  >
+                    <QrCode className="h-3.5 w-3.5" />
+                    <span>แชร์ QR เต็มจอ</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {isHost && (
@@ -1024,6 +1109,141 @@ export function RoomArena({
           )}
         </section>
       )}
+
+      {/* Share Room QR Code Modal */}
+      <AnimatePresence>
+        {showShareModal && (
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="share-room-title"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
+            onClick={() => setShowShareModal(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 6 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl sm:p-7"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-indigo-300">
+                    Share Room · เชิญผู้เล่นเข้าห้อง
+                  </p>
+                  <h2 id="share-room-title" className="mt-1 text-xl font-extrabold text-white">
+                    สแกน QR Code เพื่อเข้าร่วม
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  aria-label="ปิดหน้าต่างแชร์"
+                  onClick={() => setShowShareModal(false)}
+                  className="rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-300 hover:bg-slate-700 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-5 flex flex-col items-center rounded-xl border border-slate-800 bg-slate-950/85 p-5 text-center">
+                <div
+                  ref={shareQrContainerRef}
+                  className="rounded-2xl bg-white p-4 shadow-md"
+                >
+                  <QRCodeSVG value={inviteUrl} size={212} level="M" />
+                </div>
+
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="text-xs text-slate-400">รหัสห้อง</span>
+                  <span className="font-mono-tabular text-xl font-extrabold tracking-[0.2em] text-white">
+                    {room.roomCode}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={copyCode}
+                    aria-label="คัดลอกรหัสห้อง"
+                    className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-200 hover:bg-slate-700"
+                  >
+                    {copiedCode ? 'คัดลอกแล้ว' : 'คัดลอก'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label
+                  htmlFor="share-join-link"
+                  className="block text-xs font-semibold text-slate-300"
+                >
+                  ลิงก์เข้าห้องปัจจุบัน (Join Link)
+                </label>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <input
+                    id="share-join-link"
+                    type="text"
+                    readOnly
+                    value={inviteUrl}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="font-mono-tabular min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={copyInviteLink}
+                    className="inline-flex items-center gap-1.5 rounded-xl border-b-2 border-indigo-800 bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-indigo-500 whitespace-nowrap shrink-0"
+                  >
+                    {copiedLink ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" />
+                        <span>คัดลอกแล้ว</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" />
+                        <span>คัดลอกลิงก์</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-4">
+                <button
+                  type="button"
+                  onClick={downloadQrCode}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-700 whitespace-nowrap shrink-0"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>บันทึกรูป QR</span>
+                </button>
+                <div className="flex items-center gap-2">
+                  {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+                    <button
+                      type="button"
+                      onClick={shareNativeLink}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/40 bg-indigo-950/70 px-3.5 py-2 text-xs font-semibold text-indigo-200 hover:bg-indigo-900/80 whitespace-nowrap shrink-0"
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                      <span>แชร์ผ่านแอป</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowShareModal(false)}
+                    className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white whitespace-nowrap shrink-0"
+                  >
+                    ปิด
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Lightbox Modal for Question Image */}
       {zoomedImageUrl && (
