@@ -129,7 +129,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B1120] text-slate-100">
+    <div className="min-h-screen bg-[#090E1A] bg-stage-grid text-slate-100">
       <TopBar
         currentView={view}
         inRoom={Boolean(socket.room)}

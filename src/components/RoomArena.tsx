@@ -1,19 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
+import { AnimatePresence, motion } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   ArrowRight,
   Award,
   Check,
+  Compass,
   Copy,
+  Heart,
   ImageOff,
   Link2,
   Play,
+  Rocket,
   RotateCcw,
+  Shield,
+  Star,
   Users,
   Volume2,
   VolumeX,
   X,
+  Zap,
   ZoomIn,
 } from 'lucide-react';
 import type { ConnectionStatus } from '../hooks/useQuizSocket.ts';
@@ -23,8 +30,25 @@ import type {
   RoomSettings,
   RoomSnapshot,
 } from '../types/quiz.ts';
-import { AVATAR_STYLES, OPTION_THEMES } from '../utils/avatars.ts';
+import { AVATAR_STYLES, OPTION_THEMES, type AvatarEmblem } from '../utils/avatars.ts';
 import { soundEngine } from '../utils/sound.ts';
+
+function renderAvatarEmblem(emblem: AvatarEmblem, className = 'h-4 w-4') {
+  switch (emblem) {
+    case 'zap':
+      return <Zap className={className} />;
+    case 'heart':
+      return <Heart className={className} />;
+    case 'compass':
+      return <Compass className={className} />;
+    case 'star':
+      return <Star className={className} />;
+    case 'rocket':
+      return <Rocket className={className} />;
+    case 'shield':
+      return <Shield className={className} />;
+  }
+}
 
 interface RoomArenaProps {
   clientId: string;
@@ -479,39 +503,45 @@ export function RoomArena({
             </div>
 
             <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {room.players.map((player) => {
-                const avatar = AVATAR_STYLES[player.color];
-                const isSelf = player.clientId === clientId;
-                return (
-                  <div
-                    key={player.clientId}
-                    className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
-                      isSelf
-                        ? 'border-indigo-500/70 bg-indigo-950/25'
-                        : 'border-slate-800 bg-slate-950/60'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${avatar.bg} ${avatar.text}`}
-                      >
-                        {player.name.slice(0, 2).toUpperCase()}
+              <AnimatePresence initial={false}>
+                {room.players.map((player) => {
+                  const avatar = AVATAR_STYLES[player.color];
+                  const isSelf = player.clientId === clientId;
+                  return (
+                    <motion.div
+                      key={player.clientId}
+                      initial={{ opacity: 0, scale: 0.94 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.94 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+                        isSelf
+                          ? 'border-indigo-500/70 bg-indigo-950/30'
+                          : 'border-slate-800 bg-slate-950/65'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm ${avatar.bg} ${avatar.text}`}
+                        >
+                          {renderAvatarEmblem(avatar.emblem, 'h-4 w-4')}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-white">
+                            {player.name}
+                            {isSelf ? ' (คุณ)' : ''}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {player.isHost ? 'ผู้คุมห้อง' : 'ผู้เล่น'}
+                            {player.isHost && !player.isPlaying ? ' · โหมดผู้บรรยาย' : ''}
+                            {!player.connected ? ' · ขาดการเชื่อมต่อ' : ''}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-white">
-                          {player.name}
-                          {isSelf ? ' (คุณ)' : ''}
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          {player.isHost ? 'ผู้คุมห้อง' : 'ผู้เล่น'}
-                          {player.isHost && !player.isPlaying ? ' · โหมดผู้บรรยาย' : ''}
-                          {!player.connected ? ' · ขาดการเชื่อมต่อ' : ''}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           </section>
         </div>
@@ -519,16 +549,29 @@ export function RoomArena({
 
       {/* PHASE: COUNTDOWN */}
       {room.phase === 'COUNTDOWN' && (
-        <section className="mx-auto mt-14 max-w-xl rounded-2xl border border-slate-800 bg-slate-900/90 p-10 text-center">
+        <motion.section
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.2 }}
+          className="mx-auto mt-12 max-w-xl rounded-2xl border border-slate-800 bg-slate-900/90 p-10 text-center shadow-2xl"
+        >
           <p className="text-sm font-semibold text-indigo-300 tabular-nums">
             ข้อที่ {room.currentQuestionIndex + 1} จาก {room.totalQuestions}
           </p>
-          <h2 className="mt-2 text-2xl font-bold text-white">{room.quizTitle}</h2>
-          <div className="font-mono-tabular mt-8 text-7xl font-extrabold text-white">
-            {Math.max(1, secondsLeft)}
+          <h2 className="mt-2 text-2xl font-extrabold text-white">{room.quizTitle}</h2>
+          <div className="relative mx-auto mt-8 flex h-32 w-32 items-center justify-center rounded-full border-4 border-indigo-500/30 bg-slate-950">
+            <motion.span
+              key={Math.max(1, secondsLeft)}
+              initial={{ scale: 0.75, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="font-mono-tabular text-6xl font-extrabold text-white"
+            >
+              {Math.max(1, secondsLeft)}
+            </motion.span>
           </div>
-          <p className="mt-4 text-sm text-slate-400">เตรียมพร้อมอ่านคำถาม...</p>
-        </section>
+          <p className="mt-5 text-sm text-slate-400">เตรียมพร้อมอ่านคำถาม...</p>
+        </motion.section>
       )}
 
       {/* PHASE: QUESTION & REVEAL */}
@@ -679,18 +722,18 @@ export function RoomArena({
                   type="button"
                   disabled={room.phase !== 'QUESTION' || lockedOut}
                   onClick={() => handleSelectOption(idx)}
-                  className={`relative flex min-h-[88px] flex-col justify-between overflow-hidden rounded-2xl border p-5 text-left transition-all duration-150 ${
+                  className={`relative flex min-h-[92px] flex-col justify-between overflow-hidden rounded-2xl border p-5 text-left transition-all duration-150 ${
                     isReveal
                       ? isCorrect
-                        ? 'border-emerald-400 bg-emerald-950/60 ring-2 ring-emerald-400/60'
+                        ? 'border-emerald-400 bg-emerald-950/65 ring-2 ring-emerald-400/70'
                         : isMyPick
-                        ? 'border-rose-400/60 bg-slate-900/70 opacity-80'
+                        ? 'border-rose-400/60 bg-slate-900/75 opacity-80'
                         : 'border-slate-800 bg-slate-900/50 opacity-55'
                       : isMyPick
-                      ? `${theme.baseBg} ${theme.border} ring-2 ring-white scale-[0.99]`
+                      ? `${theme.baseBg} ${theme.border} ${theme.bottomLip} ring-2 ring-white translate-y-[1px]`
                       : lockedOut
-                      ? `${theme.baseBg} ${theme.border} opacity-45 cursor-not-allowed`
-                      : `${theme.baseBg} ${theme.hoverBg} ${theme.border} active:scale-[0.98]`
+                      ? `${theme.baseBg} ${theme.border} ${theme.bottomLip} opacity-45 cursor-not-allowed`
+                      : `${theme.baseBg} ${theme.hoverBg} ${theme.border} ${theme.bottomLip} active:translate-y-[2px]`
                   }`}
                 >
                   <div className="flex w-full items-start justify-between gap-3">
@@ -846,26 +889,35 @@ export function RoomArena({
             </p>
 
             {/* Top 3 Podium Cards */}
-            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
               {playingPlayers.slice(0, 3).map((player, rankIdx) => {
                 const avatar = AVATAR_STYLES[player.color];
                 const rankLabels = ['อันดับ 1', 'อันดับ 2', 'อันดับ 3'];
+                const orderClass =
+                  rankIdx === 0
+                    ? 'sm:order-2 sm:py-7 border-amber-400/75 bg-amber-950/30 shadow-xl'
+                    : rankIdx === 1
+                    ? 'sm:order-1 border-slate-700 bg-slate-950/75'
+                    : 'sm:order-3 border-slate-800 bg-slate-950/65';
                 return (
-                  <div
+                  <motion.div
                     key={player.clientId}
-                    className={`rounded-xl border p-5 ${
-                      rankIdx === 0
-                        ? 'border-amber-400/70 bg-amber-950/25'
-                        : 'border-slate-800 bg-slate-950/70'
-                    }`}
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.22, delay: rankIdx * 0.08 }}
+                    className={`rounded-xl border p-5 ${orderClass}`}
                   >
-                    <p className="text-xs font-bold text-amber-300">
+                    <p
+                      className={`text-xs font-bold ${
+                        rankIdx === 0 ? 'text-amber-300' : 'text-slate-300'
+                      }`}
+                    >
                       {rankLabels[rankIdx]}
                     </p>
                     <div
-                      className={`mx-auto mt-3 flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold ${avatar.bg} ${avatar.text}`}
+                      className={`mx-auto mt-3 flex h-12 w-12 items-center justify-center rounded-xl shadow-md ${avatar.bg} ${avatar.text}`}
                     >
-                      {player.name.slice(0, 2).toUpperCase()}
+                      {renderAvatarEmblem(avatar.emblem, 'h-5 w-5')}
                     </div>
                     <p className="mt-3 truncate text-lg font-bold text-white">
                       {player.name}
@@ -876,7 +928,7 @@ export function RoomArena({
                     <p className="mt-1 text-xs text-slate-400 tabular-nums">
                       ถูก {player.correctCount} / {room.totalQuestions} ข้อ
                     </p>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
@@ -961,23 +1013,27 @@ export function RoomArena({
       )}
 
       {/* Ephemeral Cheer / Reaction Stream */}
-      {reactions.length > 0 && (
-        <div
-          aria-live="polite"
-          className="pointer-events-none fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2"
-        >
+      <div
+        aria-live="polite"
+        className="pointer-events-none fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2"
+      >
+        <AnimatePresence>
           {reactions.map((r) => (
-            <div
+            <motion.div
               key={r.id}
+              initial={{ opacity: 0, y: 10, scale: 0.92 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.94 }}
+              transition={{ duration: 0.18 }}
               className="rounded-xl border border-slate-700 bg-slate-900/95 px-3.5 py-2 text-xs font-semibold text-white shadow-lg"
             >
               <span className="text-indigo-300">{r.senderName}</span>
               <span className="text-slate-400"> · </span>
               <span>{r.label}</span>
-            </div>
+            </motion.div>
           ))}
-        </div>
-      )}
+        </AnimatePresence>
+      </div>
     </main>
   );
 }

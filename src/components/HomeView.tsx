@@ -1,8 +1,39 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Check, Layers, Plus, Timer, Users, Zap } from 'lucide-react';
+import { motion } from 'motion/react';
+import {
+  ArrowRight,
+  Compass,
+  Gamepad2,
+  Heart,
+  Layers,
+  Plus,
+  Rocket,
+  Shield,
+  Star,
+  Timer,
+  Users,
+  Zap,
+} from 'lucide-react';
 import type { AvatarColor, QuizDeck } from '../types/quiz.ts';
 import type { ConnectionStatus, TransportMode } from '../hooks/useQuizSocket.ts';
-import { AVATAR_COLOR_LIST, AVATAR_STYLES } from '../utils/avatars.ts';
+import { AVATAR_COLOR_LIST, AVATAR_STYLES, type AvatarEmblem } from '../utils/avatars.ts';
+
+function renderAvatarEmblem(emblem: AvatarEmblem, className = 'h-4 w-4') {
+  switch (emblem) {
+    case 'zap':
+      return <Zap className={className} />;
+    case 'heart':
+      return <Heart className={className} />;
+    case 'compass':
+      return <Compass className={className} />;
+    case 'star':
+      return <Star className={className} />;
+    case 'rocket':
+      return <Rocket className={className} />;
+    case 'shield':
+      return <Shield className={className} />;
+  }
+}
 
 interface HomeViewProps {
   initialMode: 'join' | 'create';
@@ -105,28 +136,34 @@ export function HomeView({
   };
 
   const displayError = localError || errorMessage;
+  const currentAvatar = AVATAR_STYLES[playerColor];
 
   return (
-    <main className="mx-auto max-w-[1200px] px-6 py-10 lg:py-14">
+    <main className="mx-auto max-w-[1200px] px-6 py-8 lg:py-12">
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-stretch">
         {/* Left column: Hero Headline + Room Action Workspace */}
-        <section className="lg:col-span-6 flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/90 p-7 sm:p-9">
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          className="lg:col-span-6 flex flex-col justify-between rounded-2xl border border-slate-800/90 bg-slate-900/85 p-7 shadow-2xl backdrop-blur-md sm:p-9"
+        >
           <div>
-            <p className="text-sm font-medium text-indigo-300">
-              เล่นพร้อมกันแบบเรียลไทม์ · ไม่ต้องลงทะเบียน · รองรับทุกอุปกรณ์
+            <p className="text-sm font-semibold text-indigo-300">
+              เล่นพร้อมกันแบบเรียลไทม์ · ไม่ต้องสมัครสมาชิก · รองรับมือถือและคอมพิวเตอร์
             </p>
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-[42px] lg:leading-[1.16] [text-wrap:balance]">
-              สร้างห้องควิซออนไลน์ แล้วดวลคำถามพร้อมกันทั้งห้อง
+              เปิดห้องควิซออนไลน์ ดวลความรู้กับเพื่อนพร้อมกันทันที
             </h1>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-300">
-              เปิดห้องในคลิกเดียว แชร์รหัส 6 หลักหรือสแกน QR Code ให้เพื่อนเข้าร่วมจากมือถือหรือคอมพิวเตอร์
-              ตอบไวได้คะแนนสูง พร้อมตารางอันดับสดทุกข้อ
+              สร้างห้องรับรหัส 6 หลักหรือสแกน QR Code เพื่อเข้าแข่งพร้อมกัน ตอบไวได้คะแนนโบนัส
+              ลุ้นตารางอันดับสดทุกข้อ
             </p>
           </div>
 
-          <div className="mt-8 border-t border-slate-800 pt-7">
+          <div className="mt-8 border-t border-slate-800/90 pt-7">
             {/* Segmented Mode Control */}
-            <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-950 p-1">
+            <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-slate-800 bg-slate-950/90 p-1.5">
               <button
                 type="button"
                 onClick={() => {
@@ -134,9 +171,9 @@ export function HomeView({
                   setLocalError(null);
                   onClearError();
                 }}
-                className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                className={`rounded-lg px-4 py-2.5 text-sm font-bold transition-all whitespace-nowrap shrink-0 ${
                   mode === 'join'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -149,9 +186,9 @@ export function HomeView({
                   setLocalError(null);
                   onClearError();
                 }}
-                className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                className={`rounded-lg px-4 py-2.5 text-sm font-bold transition-all whitespace-nowrap shrink-0 ${
                   mode === 'create'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -161,30 +198,38 @@ export function HomeView({
 
             {/* Player Profile Row */}
             <div className="mt-6 space-y-4">
-              <div>
-                <label
-                  htmlFor="player-name-input"
-                  className="block text-sm font-medium text-slate-200"
+              <div className="flex items-end gap-3">
+                <div
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-md transition-colors ${currentAvatar.bg} ${currentAvatar.text}`}
+                  aria-hidden="true"
                 >
-                  ชื่อเล่นของคุณ
-                </label>
-                <input
-                  id="player-name-input"
-                  type="text"
-                  maxLength={24}
-                  value={playerName}
-                  onChange={(e) => {
-                    setLocalError(null);
-                    onUpdateProfile(e.target.value, playerColor);
-                  }}
-                  placeholder="เช่น ต้นกล้า, แพรว, ทีมสีส้ม"
-                  className="mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base text-white placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                />
+                  {renderAvatarEmblem(currentAvatar.emblem, 'h-5 w-5')}
+                </div>
+                <div className="flex-1">
+                  <label
+                    htmlFor="player-name-input"
+                    className="block text-sm font-semibold text-slate-200"
+                  >
+                    ชื่อเล่นของคุณ
+                  </label>
+                  <input
+                    id="player-name-input"
+                    type="text"
+                    maxLength={24}
+                    value={playerName}
+                    onChange={(e) => {
+                      setLocalError(null);
+                      onUpdateProfile(e.target.value, playerColor);
+                    }}
+                    placeholder="เช่น ต้นกล้า, แพรว, ทีมสีส้ม"
+                    className="mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-950/90 px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                  />
+                </div>
               </div>
 
               <div>
-                <span className="block text-sm font-medium text-slate-200">
-                  เลือกสีประจำตัว
+                <span className="block text-sm font-medium text-slate-300">
+                  เลือกตัวละครและสีประจำตัว
                 </span>
                 <div className="mt-2 flex flex-wrap items-center gap-2.5">
                   {AVATAR_COLOR_LIST.map((colorKey) => {
@@ -196,15 +241,15 @@ export function HomeView({
                         type="button"
                         aria-label={`เลือกสี${style.label}`}
                         onClick={() => onUpdateProfile(playerName, colorKey)}
-                        className={`flex h-10 w-10 items-center justify-center rounded-xl transition-transform ${
+                        className={`flex h-11 w-11 items-center justify-center rounded-xl transition-transform duration-150 ${
                           style.bg
-                        } ${
+                        } ${style.text} ${
                           selected
                             ? `ring-2 ${style.ring} ring-offset-2 ring-offset-slate-900 scale-105`
-                            : 'opacity-70 hover:opacity-100'
+                            : 'opacity-65 hover:opacity-100 hover:scale-105'
                         }`}
                       >
-                        {selected && <Check className="h-4 w-4 text-white" />}
+                        {renderAvatarEmblem(style.emblem, 'h-4 w-4')}
                       </button>
                     );
                   })}
@@ -238,7 +283,7 @@ export function HomeView({
                 <div>
                   <label
                     htmlFor="room-code-input"
-                    className="block text-sm font-medium text-slate-200"
+                    className="block text-sm font-semibold text-slate-200"
                   >
                     รหัสห้อง (6 ตัวอักษร)
                   </label>
@@ -253,15 +298,15 @@ export function HomeView({
                       setRoomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''));
                     }}
                     placeholder="เช่น K94M2P"
-                    className="font-mono-tabular mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-xl font-bold tracking-[0.2em] text-white uppercase placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    className="font-mono-tabular mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-xl font-bold tracking-[0.2em] text-white uppercase placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={connectionStatus !== 'connected' || isSubmitting}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-base font-bold text-white transition-colors hover:bg-indigo-500 disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border-b-4 border-indigo-800 bg-indigo-600 px-6 py-3.5 text-base font-extrabold text-white transition-all hover:bg-indigo-500 active:translate-y-0.5 active:border-b-2 disabled:opacity-50"
                 >
-                  <span>{isSubmitting ? 'กำลังเข้าร่วมห้อง...' : 'เข้าร่วมห้อง'}</span>
+                  <span>{isSubmitting ? 'กำลังเข้าร่วมห้อง...' : 'เข้าร่วมห้องเลย'}</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </form>
@@ -273,7 +318,7 @@ export function HomeView({
                       ผู้สร้างห้องร่วมเล่นตอบคำถามด้วย
                     </p>
                     <p className="text-xs text-slate-400">
-                      ปิดได้หากต้องการใช้หน้าจอนี้เป็นจอหลักขึ้นโปรเจกเตอร์หรือแชร์สกรีนอย่างเดียว
+                      ปิดได้หากต้องการใช้หน้าจอนี้เป็นจอหลักขึ้นโปรเจกเตอร์อย่างเดียว
                     </p>
                   </div>
                   <button
@@ -295,10 +340,8 @@ export function HomeView({
 
                 <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm text-slate-300">
                   <span className="text-slate-400">ชุดคำถามที่เลือก: </span>
-                  <span className="font-semibold text-white">
-                    {selectedDeck?.title}
-                  </span>
-                  <span className="text-slate-400">
+                  <span className="font-bold text-white">{selectedDeck?.title}</span>
+                  <span className="text-slate-400 tabular-nums">
                     {' '}
                     · {selectedDeck?.questions.length} ข้อ
                   </span>
@@ -307,7 +350,7 @@ export function HomeView({
                 <button
                   type="submit"
                   disabled={connectionStatus !== 'connected' || isSubmitting}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-base font-bold text-white transition-colors hover:bg-indigo-500 disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border-b-4 border-indigo-800 bg-indigo-600 px-6 py-3.5 text-base font-extrabold text-white transition-all hover:bg-indigo-500 active:translate-y-0.5 active:border-b-2 disabled:opacity-50"
                 >
                   <span>{isSubmitting ? 'กำลังเปิดห้อง...' : 'เปิดห้องและรับรหัสห้อง'}</span>
                   <ArrowRight className="h-4 w-4" />
@@ -315,16 +358,21 @@ export function HomeView({
               </form>
             )}
           </div>
-        </section>
+        </motion.section>
 
-        {/* Right column: Curated Quiz Decks Selector */}
-        <section className="lg:col-span-6 flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/90 p-7 sm:p-9">
+        {/* Right column: Curated Quiz Decks Selector with visual thumbnails */}
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.24, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+          className="lg:col-span-6 flex flex-col justify-between rounded-2xl border border-slate-800/90 bg-slate-900/85 p-7 shadow-2xl backdrop-blur-md sm:p-9"
+        >
           <div>
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold text-white">คลังชุดคำถามพร้อมเล่น</h2>
+                <h2 className="text-xl font-extrabold text-white">คลังชุดคำถามพร้อมเล่น</h2>
                 <p className="mt-1 text-sm text-slate-400">
-                  เลือกชุดคำถามที่ต้องการ หรือสร้างชุดคำถามของกลุ่มคุณเอง
+                  เลือกชุดคำถามที่ถูกใจ หรือสร้างควิซใหม่พร้อมรูปภาพได้เอง
                 </p>
               </div>
               <button
@@ -337,9 +385,11 @@ export function HomeView({
               </button>
             </div>
 
-            <div className="mt-6 space-y-3">
+            <div className="mt-6 space-y-3 max-h-[540px] overflow-y-auto pr-1">
               {allDecks.map((deck) => {
                 const isSelected = deck.id === selectedDeck?.id;
+                const coverUrl = deck.questions.find((q) => Boolean(q.imageUrl))?.imageUrl;
+
                 return (
                   <button
                     key={deck.id}
@@ -349,39 +399,56 @@ export function HomeView({
                       setMode('create');
                       setLocalError(null);
                     }}
-                    className={`w-full rounded-xl border p-4 text-left transition-colors ${
+                    className={`group flex w-full items-center gap-4 rounded-xl border p-3.5 text-left transition-all duration-150 ${
                       isSelected
-                        ? 'border-indigo-500 bg-indigo-950/35'
-                        : 'border-slate-800 bg-slate-950/60 hover:border-slate-700 hover:bg-slate-950'
+                        ? 'border-indigo-500 bg-indigo-950/45 shadow-md'
+                        : 'border-slate-800 bg-slate-950/65 hover:border-slate-700 hover:bg-slate-950'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="text-base font-bold text-white">
+                    {coverUrl ? (
+                      <img
+                        src={coverUrl}
+                        alt={deck.title}
+                        referrerPolicy="no-referrer"
+                        className="h-16 w-20 shrink-0 rounded-lg object-cover border border-slate-800"
+                      />
+                    ) : (
+                      <div className="flex h-16 w-20 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-gradient-to-br from-slate-800 to-slate-900 text-indigo-300">
+                        <Gamepad2 className="h-6 w-6" />
+                      </div>
+                    )}
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="truncate text-base font-bold text-white">
                           {deck.title}
                         </h3>
-                        <p className="mt-1 text-xs text-slate-400">
-                          {deck.category}
-                          <span aria-hidden="true"> · </span>
-                          <span className="tabular-nums">{deck.questions.length} ข้อ</span>
-                          <span aria-hidden="true"> · </span>
-                          <span className="tabular-nums">ข้อละ {deck.defaultTimeLimitSec} วินาที</span>
-                          {deck.isCustom ? ' · ชุดคำถามของคุณ' : ''}
-                        </p>
+                        <span
+                          className={`mt-0.5 text-xs font-bold whitespace-nowrap shrink-0 ${
+                            isSelected
+                              ? 'text-indigo-300'
+                              : 'text-slate-400 group-hover:text-slate-200'
+                          }`}
+                        >
+                          {isSelected ? 'กำลังเลือก' : 'เลือกเล่น'}
+                        </span>
                       </div>
-                      <span
-                        className={`mt-0.5 text-xs font-semibold whitespace-nowrap shrink-0 ${
-                          isSelected ? 'text-indigo-300' : 'text-slate-400'
-                        }`}
-                      >
-                        {isSelected ? 'เลือกอยู่' : 'เลือกใช้'}
-                      </span>
-                    </div>
-                    {deck.description && (
-                      <p className="mt-2.5 text-sm leading-relaxed text-slate-300 line-clamp-2">
-                        {deck.description}
+                      <p className="mt-1 text-xs text-slate-400">
+                        {deck.category}
+                        <span aria-hidden="true"> · </span>
+                        <span className="tabular-nums">{deck.questions.length} ข้อ</span>
+                        <span aria-hidden="true"> · </span>
+                        <span className="tabular-nums">
+                          ข้อละ {deck.defaultTimeLimitSec} วินาที
+                        </span>
+                        {deck.isCustom ? ' · สร้างเอง' : ''}
                       </p>
-                    )}
+                      {deck.description && (
+                        <p className="mt-1.5 text-xs leading-relaxed text-slate-300 line-clamp-1">
+                          {deck.description}
+                        </p>
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -421,7 +488,7 @@ export function HomeView({
               )}
             </div>
           </div>
-        </section>
+        </motion.section>
       </div>
 
       {/* 4-column Feature Strip below Hero Split */}
@@ -432,7 +499,7 @@ export function HomeView({
             <span>ซิงก์ห้องเดียวกันแบบสด</span>
           </div>
           <p className="mt-1.5 text-sm leading-relaxed text-slate-400">
-            ทุกคนเห็นคำถามและเวลานับถอยหลังพร้อมกันผ่าน WebSocket โดยเซิร์ฟเวอร์คุมจังหวะกลาง
+            ทุกคนเห็นคำถาม รูปภาพ และเวลานับถอยหลังพร้อมกันทุกเครื่องแบบเรียลไทม์
           </p>
         </div>
 
@@ -442,27 +509,27 @@ export function HomeView({
             <span>คะแนนตามความไวและสตรีค</span>
           </div>
           <p className="mt-1.5 text-sm leading-relaxed text-slate-400">
-            ยิ่งตอบถูกและเร็ว ยิ่งได้คะแนนสูงถึง 1,000 คะแนน พร้อมโบนัสตอบถูกต่อเนื่องสูงสุด 500 คะแนน
+            ตอบถูกและเร็วรับสูงสุด 1,000 คะแนน พร้อมโบนัสตอบถูกต่อเนื่องสูงสุด 500 คะแนน
           </p>
         </div>
 
         <div>
           <div className="flex items-center gap-2 text-sm font-bold text-white">
             <Timer className="h-4 w-4 text-emerald-400" />
-            <span>คุมจังหวะห้องได้ดั่งใจ</span>
+            <span>เสียงนับถอยหลังเร้าใจ</span>
           </div>
           <p className="mt-1.5 text-sm leading-relaxed text-slate-400">
-            ผู้คุมห้องกดเฉลยทันที เลื่อนข้อถัดไป หรือเปิดโหมดเดินหน้าอัตโนมัติได้ตลอดเวลา
+            มาพร้อมเสียงจังหวะนับถอยหลัง เสียงตอบถูก/ผิด และปุ่มปิดเสียงได้ตามต้องการ
           </p>
         </div>
 
         <div>
           <div className="flex items-center gap-2 text-sm font-bold text-white">
             <Layers className="h-4 w-4 text-sky-400" />
-            <span>สร้างข้อสอบเฉพาะกลุ่ม</span>
+            <span>สร้างข้อสอบพร้อมรูปภาพ</span>
           </div>
           <p className="mt-1.5 text-sm leading-relaxed text-slate-400">
-            แต่งคำถาม 2–4 ตัวเลือก พร้อมคำอธิบายหลังเฉลย และบันทึกเก็บไว้เล่นซ้ำได้ทันที
+            แต่งคำถาม 2–4 ตัวเลือก อัปโหลดรูปประกอบ และบันทึกเก็บไว้เปิดห้องเล่นซ้ำได้ทันที
           </p>
         </div>
       </section>
