@@ -1,0 +1,6 @@
+{
+  "name": "QuizSync — Real-Time Multiplayer Quiz",
+  "description": "สร้างห้องควิซออนไลน์ เล่นพร้อมกันแบบเรียลไทม์ด้วยรหัสห้อง ลิงก์เชิญ หรือ QR Code พร้อมระบบนับคะแนนตามความเร็วและตารางอันดับสด",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
